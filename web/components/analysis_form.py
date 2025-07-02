@@ -31,7 +31,7 @@ def render_analysis_form():
                     placeholder="输入美股代码，如 AAPL, TSLA, MSFT",
                     help="输入要分析的美股代码"
                 ).upper().strip()
-            else if market_type == "A股":  # A股
+            elif market_type == "A股":  # A股
                 stock_symbol = st.text_input(
                     "股票代码 📈",
                     value="000001",
