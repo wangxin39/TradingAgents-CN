@@ -925,7 +925,7 @@ def run_analysis():
             func(*args, **kwargs)
             timestamp, message_type, content = obj.messages[-1]
             content = content.replace("\n", " ")  # Replace newlines with spaces
-            with open(log_file, "a") as f:
+            with open(log_file, "a", encoding='utf-8') as f:
                 f.write(f"{timestamp} [{message_type}] {content}\n")
         return wrapper
     
@@ -936,7 +936,7 @@ def run_analysis():
             func(*args, **kwargs)
             timestamp, tool_name, args = obj.tool_calls[-1]
             args_str = ", ".join(f"{k}={v}" for k, v in args.items())
-            with open(log_file, "a") as f:
+            with open(log_file, "a", encoding='utf-8') as f:
                 f.write(f"{timestamp} [Tool Call] {tool_name}({args_str})\n")
         return wrapper
 
@@ -949,7 +949,7 @@ def run_analysis():
                 content = obj.report_sections[section_name]
                 if content:
                     file_name = f"{section_name}.md"
-                    with open(report_dir / file_name, "w") as f:
+                    with open(report_dir / file_name, "w", encoding='utf-8') as f:
                         f.write(content)
         return wrapper
 
@@ -1236,7 +1236,11 @@ def run_analysis():
 
         # Get final state and decision
         final_state = trace[-1]
+        console.print("[DEBUG] selections 字典内容:", selections)  # 查看实际数据结构
+        console.print("[DEBUG] selections 的键:", selections.keys())  # 确认可用键名
+        #symbol = selections.get('stock_symbol', selections.get('symbol', 'DEFAULT_SYMBOL'))  # 多层回退
         decision = graph.process_signal(final_state["final_trade_decision"], selections['stock_symbol'])
+        #decision = graph.process_signal(final_state["final_trade_decision"], symbol)
 
         # Update all agent statuses to completed
         for agent in message_buffer.agent_status:
