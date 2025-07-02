@@ -99,7 +99,7 @@
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/hsliuping/TradingAgents-CN.git
+git clone https://github.com/wangxin39/TradingAgents-CN.git
 cd TradingAgents-CN
 
 # 2. 创建虚拟环境
@@ -300,9 +300,10 @@ cost_optimized_config = {
 
 ## 📞 联系方式
 
-- **GitHub Issues**: [提交问题和建议](https://github.com/hsliuping/TradingAgents-CN/issues)
-- **邮箱**: hsliup@163.com
+- **GitHub Issues**: [提交问题和建议](https://github.com/wangxin39/TradingAgents-CN/issues)
+- **邮箱**: wangxin@yundsm.com
 - **原项目**: [TauricResearch/TradingAgents](https://github.com/TauricResearch/TradingAgents)
+- **原项目中文版**: [hsliuping/TradingAgents-CN](https://github.com/hsliuping/TradingAgents-CN)
 
 ## ⚠️ 风险提示
 
