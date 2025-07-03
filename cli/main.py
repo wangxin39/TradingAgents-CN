@@ -850,6 +850,9 @@ def check_api_keys(llm_provider: str) -> bool:
     elif "google" in llm_provider.lower():
         if not os.getenv("GOOGLE_API_KEY"):
             missing_keys.append("GOOGLE_API_KEY")
+    elif "deepseek" in llm_provider.lower():
+        if not os.getenv("DEEPSEEK_API_KEY"):
+            missing_keys.append("DEEPSEEK_API_KEY")
 
     # 检查金融数据API密钥
     if not os.getenv("FINNHUB_API_KEY"):
@@ -897,6 +900,8 @@ def run_analysis():
         config["llm_provider"] = "anthropic"
     elif "google" in llm_provider:
         config["llm_provider"] = "google"
+    elif "deepseek" in llm_provider:
+        config["llm_provider"] = "deepseek"
     else:
         config["llm_provider"] = llm_provider
 
@@ -1315,6 +1320,12 @@ def config():
         "✅ 支持 | Supported",
         "需要国外API | Requires overseas API"
     )
+    providers_table.add_row(
+        "🔍 DeepSeek AI",
+        "deepseek-R1, deepseek-R1-0528",
+        "✅ 支持 | Supported",
+        "国产大模型 | Chinese-optimized"
+    )
 
     console.print(providers_table)
 
@@ -1332,6 +1343,7 @@ def config():
     finnhub_key = os.getenv("FINNHUB_API_KEY")
     anthropic_key = os.getenv("ANTHROPIC_API_KEY")
     google_key = os.getenv("GOOGLE_API_KEY")
+    deepseek_key = os.getenv("DEEPSEEK_API_KEY")
 
     api_keys_table.add_row(
         "DASHSCOPE_API_KEY",
@@ -1358,6 +1370,12 @@ def config():
         "✅ 已配置" if google_key else "❌ 未配置",
         f"Google AI | {google_key[:12]}..." if google_key else "Google AI API密钥"
     )
+    api_keys_table.add_row(
+        "DEEPSEEK_API_KEY",
+        "✅ 已配置" if deepseek_key else "❌ 未配置",
+        f"Deepseek AI | {deepseek_key[:12]}..." if deepseek_key else "DeepSeek AI API密钥"
+    )
+
 
     console.print(api_keys_table)
 
