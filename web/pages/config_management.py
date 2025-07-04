@@ -29,20 +29,20 @@ def render_config_management():
     render_env_status()
 
     # 侧边栏选择功能
-    st.sidebar.title("配置选项")
-    page = st.sidebar.selectbox(
-        "选择功能",
-        ["模型配置", "定价设置", "使用统计", "系统设置"]
-    )
+    # st.sidebar.title("配置选项")
+    # page = st.sidebar.selectbox(
+    #     "选择功能",
+    #     ["模型配置", "定价设置", "使用统计", "系统设置"]
+    # )
     
-    if page == "模型配置":
-        render_model_config()
-    elif page == "定价设置":
-        render_pricing_config()
-    elif page == "使用统计":
-        render_usage_statistics()
-    elif page == "系统设置":
-        render_system_settings()
+    # if page == "模型配置":
+    #     render_model_config()
+    # elif page == "定价设置":
+    #     render_pricing_config()
+    # elif page == "使用统计":
+    #     render_usage_statistics()
+    # elif page == "系统设置":
+    #     render_system_settings()
 
 
 def render_model_config():

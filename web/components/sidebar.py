@@ -12,22 +12,22 @@ def render_sidebar():
         st.header("🔧 系统配置")
         
         # API密钥状态
-        st.subheader("🔑 API密钥状态")
+        # st.subheader("🔑 API密钥状态")
         
-        dashscope_key = os.getenv("DASHSCOPE_API_KEY")
-        finnhub_key = os.getenv("FINNHUB_API_KEY")
+        # dashscope_key = os.getenv("DASHSCOPE_API_KEY")
+        # finnhub_key = os.getenv("FINNHUB_API_KEY")
         
-        if dashscope_key:
-            st.success(f"✅ 阿里百炼: {dashscope_key[:12]}...")
-        else:
-            st.error("❌ 阿里百炼: 未配置")
+        # if dashscope_key:
+        #     st.success(f"✅ 阿里百炼: {dashscope_key[:12]}...")
+        # else:
+        #     st.error("❌ 阿里百炼: 未配置")
         
-        if finnhub_key:
-            st.success(f"✅ 金融数据: {finnhub_key[:12]}...")
-        else:
-            st.error("❌ 金融数据: 未配置")
+        # if finnhub_key:
+        #     st.success(f"✅ 金融数据: {finnhub_key[:12]}...")
+        # else:
+        #     st.error("❌ 金融数据: 未配置")
         
-        st.markdown("---")
+        # st.markdown("---")
         
         # AI模型配置
         st.subheader("🧠 AI模型配置")
@@ -96,24 +96,24 @@ def render_sidebar():
         st.markdown("---")
         
         # 系统信息
-        st.subheader("ℹ️ 系统信息")
+        # st.subheader("ℹ️ 系统信息")
         
-        st.info("""
-        **版本**: 1.0.0
-        **框架**: Streamlit + LangGraph
-        **AI模型**: 阿里百炼通义千问
-        **数据源**: FinnHub API
-        """)
+        # st.info("""
+        # **版本**: 1.0.0
+        # **框架**: Streamlit + LangGraph
+        # **AI模型**: 阿里百炼通义千问
+        # **数据源**: FinnHub API
+        # """)
         
         # 帮助链接
-        st.subheader("📚 帮助资源")
+        # st.subheader("📚 帮助资源")
         
-        st.markdown("""
-        - [📖 使用文档](https://github.com/TauricResearch/TradingAgents)
-        - [🐛 问题反馈](https://github.com/TauricResearch/TradingAgents/issues)
-        - [💬 讨论社区](https://github.com/TauricResearch/TradingAgents/discussions)
-        - [🔧 API密钥配置](../docs/security/api_keys_security.md)
-        """)
+        # st.markdown("""
+        # - [📖 使用文档](https://github.com/TauricResearch/TradingAgents)
+        # - [🐛 问题反馈](https://github.com/TauricResearch/TradingAgents/issues)
+        # - [💬 讨论社区](https://github.com/TauricResearch/TradingAgents/discussions)
+        # - [🔧 API密钥配置](../docs/security/api_keys_security.md)
+        # """)
     
     return {
         'llm_provider': llm_provider,

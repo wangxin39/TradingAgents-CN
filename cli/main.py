@@ -29,12 +29,15 @@ from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
 from cli.models import AnalystType
 from cli.utils import *
+from tradingagents.i18n import get_lang
 
 console = Console()
+lang = get_lang()
 
 app = typer.Typer(
     name="TradingAgents",
-    help="TradingAgents CLI: 多智能体大语言模型金融交易框架 | Multi-Agents LLM Financial Trading Framework",
+#    help="TradingAgents CLI: 多智能体大语言模型金融交易框架 | Multi-Agents LLM Financial Trading Framework",
+    help=get_lang("welcome") + ": " + get_lang("framework_subtitle"),
     add_completion=True,  # Enable shell completion
     rich_markup_mode="rich",  # Enable rich markup
     no_args_is_help=False,  # 不显示帮助，直接进入分析模式
@@ -49,6 +52,23 @@ class MessageBuffer:
         self.current_report = None
         self.final_report = None  # Store the complete final report
         self.agent_status = {
+            # # Analyst Team
+            # get_lang("market_analyst"): get_lang("pending"),
+            # get_lang("social_analyst"): get_lang("pending"),
+            # get_lang("news_analyst"): get_lang("pending"),
+            # get_lang("fundamentals_analyst"): get_lang("pending"),
+            # # Research Team
+            # get_lang("bull_researcher"): get_lang("pending"),
+            # get_lang("bear_researcher"): get_lang("pending"),
+            # get_lang("research_manager"): get_lang("pending"),
+            # # Trading Team
+            # get_lang("trader"): get_lang("pending"),
+            # # Risk Management Team
+            # get_lang("risky_analyst"): get_lang("pending"),
+            # get_lang("neutral_analyst"): get_lang("pending"),
+            # get_lang("safe_analyst"): get_lang("pending"),
+            # # Portfolio Management Team
+            # get_lang("portfolio_manager"): get_lang("pending"),
             # Analyst Team
             "Market Analyst": "pending",
             "Social Analyst": "pending",
@@ -550,6 +570,15 @@ def select_market():
             "format": "代码.HK (如: 0700.HK)",
             "pattern": r'^\d{4}\.HK$',
             "data_source": "yahoo_finance"
+        },
+        "4": {
+            "name": "数字货币",
+            "name_en": "Coin Stock",
+            "default": "BTCUSDT",
+            "examples": ["BTCUSDT", "BTC", "ETH"],
+            "format": "代码 (如: BTC)",
+            "pattern": r'^[A-Z]{1,7}\$',
+            "data_source": "binance_finance"
         }
     }
 
@@ -1244,7 +1273,7 @@ def run_analysis():
         console.print("[DEBUG] selections 字典内容:", selections)  # 查看实际数据结构
         console.print("[DEBUG] selections 的键:", selections.keys())  # 确认可用键名
         #symbol = selections.get('stock_symbol', selections.get('symbol', 'DEFAULT_SYMBOL'))  # 多层回退
-        decision = graph.process_signal(final_state["final_trade_decision"], selections['stock_symbol'])
+        decision = graph.process_signal(final_state["final_trade_decision"], selections['ticker'])
         #decision = graph.process_signal(final_state["final_trade_decision"], symbol)
 
         # Update all agent statuses to completed
