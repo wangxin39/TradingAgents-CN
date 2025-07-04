@@ -15,9 +15,13 @@ sys.path.append(str(project_root))
 
 try:
     from tradingagents.dataflows.cache_manager import get_cache
+    from tradingagents.dataflows.optimized_us_data import get_optimized_us_data_provider
+    from tradingagents.dataflows.optimized_china_data import get_optimized_china_data_provider
     CACHE_AVAILABLE = True
+    OPTIMIZED_PROVIDERS_AVAILABLE = True
 except ImportError as e:
     CACHE_AVAILABLE = False
+    OPTIMIZED_PROVIDERS_AVAILABLE = False
     st.error(f"缓存管理器不可用: {e}")
 
 def main():
@@ -112,7 +116,86 @@ def main():
             
         except Exception as e:
             st.error(f"获取缓存统计失败: {e}")
-    
+
+    with col2:
+        st.subheader("⚙️ 缓存配置")
+
+        # 显示缓存配置信息
+        if hasattr(cache, 'cache_config'):
+            config_tabs = st.tabs(["美股配置", "A股配置"])
+
+            with config_tabs[0]:
+                st.markdown("**美股数据缓存配置**")
+                us_configs = {k: v for k, v in cache.cache_config.items() if k.startswith('us_')}
+                for config_name, config_data in us_configs.items():
+                    st.info(f"""
+                    **{config_data.get('description', config_name)}**
+                    - TTL: {config_data.get('ttl_hours', 'N/A')} 小时
+                    - 最大文件数: {config_data.get('max_files', 'N/A')}
+                    """)
+
+            with config_tabs[1]:
+                st.markdown("**A股数据缓存配置**")
+                china_configs = {k: v for k, v in cache.cache_config.items() if k.startswith('china_')}
+                for config_name, config_data in china_configs.items():
+                    st.info(f"""
+                    **{config_data.get('description', config_name)}**
+                    - TTL: {config_data.get('ttl_hours', 'N/A')} 小时
+                    - 最大文件数: {config_data.get('max_files', 'N/A')}
+                    """)
+        else:
+            st.warning("缓存配置信息不可用")
+
+    # 缓存测试功能
+    st.markdown("---")
+    st.subheader("🧪 缓存测试")
+
+    if OPTIMIZED_PROVIDERS_AVAILABLE:
+        test_col1, test_col2 = st.columns(2)
+
+        with test_col1:
+            st.markdown("**测试美股数据缓存**")
+            us_symbol = st.text_input("美股代码", value="AAPL", key="us_test")
+            if st.button("测试美股缓存", key="test_us"):
+                if us_symbol:
+                    with st.spinner(f"测试 {us_symbol} 缓存..."):
+                        try:
+                            from datetime import datetime, timedelta
+                            provider = get_optimized_us_data_provider()
+                            result = provider.get_stock_data(
+                                symbol=us_symbol,
+                                start_date=(datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'),
+                                end_date=datetime.now().strftime('%Y-%m-%d')
+                            )
+                            st.success("✅ 美股缓存测试成功")
+                            with st.expander("查看结果"):
+                                st.text(result[:500] + "..." if len(result) > 500 else result)
+                        except Exception as e:
+                            st.error(f"❌ 美股缓存测试失败: {e}")
+
+        with test_col2:
+            st.markdown("**测试A股数据缓存**")
+            china_symbol = st.text_input("A股代码", value="000001", key="china_test")
+            if st.button("测试A股缓存", key="test_china"):
+                if china_symbol:
+                    with st.spinner(f"测试 {china_symbol} 缓存..."):
+                        try:
+                            from datetime import datetime, timedelta
+                            provider = get_optimized_china_data_provider()
+                            result = provider.get_stock_data(
+                                symbol=china_symbol,
+                                start_date=(datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'),
+                                end_date=datetime.now().strftime('%Y-%m-%d')
+                            )
+                            st.success("✅ A股缓存测试成功")
+                            with st.expander("查看结果"):
+                                st.text(result[:500] + "..." if len(result) > 500 else result)
+                        except Exception as e:
+                            st.error(f"❌ A股缓存测试失败: {e}")
+    else:
+        st.warning("优化数据提供器不可用，无法进行缓存测试")
+
+    # 原有的缓存详情部分    
     with col2:
         st.subheader("⚙️ 缓存配置")
         

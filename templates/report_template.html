@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ company }} 交易分析报告 - {{ trade_date }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+        }
+        .header {
+            background: linear-gradient(135deg, #6c757d 0%, #343a40 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .section-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+        .section-header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 1rem;
+            margin: 0;
+            cursor: pointer;
+            border: none;
+            width: 100%;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.3s ease;
+        }
+        .section-header:hover {
+            background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+        }
+        .section-header.collapsed .fa-chevron-down {
+            transform: rotate(-90deg);
+        }
+        .section-header .fa-chevron-down {
+            transition: transform 0.3s ease;
+        }
+        .section-content {
+            padding: 1.5rem;
+            border-top: 1px solid #dee2e6;
+        }
+        .debate-card {
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background-color: #fff;
+        }
+        .bull-view { color: #28a745; }
+        .bear-view { color: #dc3545; }
+        .risky-view { color: #dc3545; }
+        .safe-view { color: #28a745; }
+        .neutral-view { color: #6c757d; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .final-decision {
+            background-color: #e9ecef;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-top: 2rem;
+            border-left: 5px solid #6c757d;
+        }
+        .download-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .download-btn:hover {
+            background: #218838;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transform: translateY(-2px);
+        }
+        .download-menu {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: none;
+            z-index: 1000;
+        }
+        .download-menu.show {
+            display: block;
+        }
+        .download-menu button {
+            display: block;
+            width: 100%;
+            padding: 10px 20px;
+            border: none;
+            background: none;
+            text-align: left;
+            cursor: pointer;
+            color: #333;
+            transition: background-color 0.2s;
+        }
+        .download-menu button:hover {
+            background-color: #f8f9fa;
+        }
+        .download-menu button i {
+            margin-right: 8px;
+            width: 20px;
+            text-align: center;
+        }
+        .download-link {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            margin-left: 1rem;
+            transition: background-color 0.3s;
+            display: inline-block;
+        }
+        .download-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1>{{ company }} 交易分析报告</h1>
+                    <p class="mb-0">交易日期: {{ trade_date }} | 市场类型: {{ market_type }}</p>
+                </div>
+                <a href="report_{{ company }}_{{ trade_date }}.md" class="download-link">
+                    <i class="fas fa-download me-2"></i>下载 Markdown
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mb-5">
+        <!-- 市场分析部分 -->
+        <div class="section-card">
+            <button class="section-header" type="button" data-bs-toggle="collapse" data-bs-target="#marketAnalysis" aria-expanded="true">
+                <span><i class="fas fa-chart-line me-2"></i>市场分析</span>
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="collapse show" id="marketAnalysis">
+                <div class="section-content" id="marketAnalysisContent"></div>
+            </div>
+        </div>
+
+        <!-- 基本面分析部分 -->
+        <div class="section-card">
+            <button class="section-header" type="button" data-bs-toggle="collapse" data-bs-target="#fundamentalAnalysis" aria-expanded="true">
+                <span><i class="fas fa-balance-scale me-2"></i>基本面分析</span>
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="collapse show" id="fundamentalAnalysis">
+                <div class="section-content" id="fundamentalAnalysisContent"></div>
+            </div>
+        </div>
+
+        <!-- 情绪分析部分 -->
+        <div class="section-card">
+            <button class="section-header" type="button" data-bs-toggle="collapse" data-bs-target="#sentimentAnalysis" aria-expanded="true">
+                <span><i class="fas fa-heart me-2"></i>情绪分析</span>
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="collapse show" id="sentimentAnalysis">
+                <div class="section-content" id="sentimentAnalysisContent"></div>
+            </div>
+        </div>
+
+        <!-- 新闻分析部分 -->
+        <div class="section-card">
+            <button class="section-header" type="button" data-bs-toggle="collapse" data-bs-target="#newsAnalysis" aria-expanded="true">
+                <span><i class="fas fa-newspaper me-2"></i>新闻分析</span>
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="collapse show" id="newsAnalysis">
+                <div class="section-content" id="newsAnalysisContent"></div>
+            </div>
+        </div>
+
+        <!-- 投资辩论部分 -->
+        <div class="section-card">
+            <button class="section-header" type="button" data-bs-toggle="collapse" data-bs-target="#investmentDebate" aria-expanded="true">
+                <span><i class="fas fa-comments me-2"></i>投资辩论</span>
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="collapse show" id="investmentDebate">
+                <div class="section-content">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="debate-card">
+                                <h5 class="bull-view"><i class="fas fa-arrow-up me-2"></i>多方观点</h5>
+                                <div id="bullHistory"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="debate-card">
+                                <h5 class="bear-view"><i class="fas fa-arrow-down me-2"></i>空方观点</h5>
+                                <div id="bearHistory"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="debate-card mt-3">
+                        <h5><i class="fas fa-history me-2"></i>辩论历史</h5>
+                        <div id="debateHistory"></div>
+                    </div>
+                    <div class="debate-card">
+                        <h5><i class="fas fa-gavel me-2"></i>评判决策</h5>
+                        <div id="judgeDecision"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 交易员投资决策部分 -->
+        <div class="section-card">
+            <button class="section-header" type="button" data-bs-toggle="collapse" data-bs-target="#traderDecision" aria-expanded="true">
+                <span><i class="fas fa-user-tie me-2"></i>交易员投资决策</span>
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="collapse show" id="traderDecision">
+                <div class="section-content" id="traderDecisionContent"></div>
+            </div>
+        </div>
+
+        <!-- 风险辩论部分 -->
+        <div class="section-card">
+            <button class="section-header" type="button" data-bs-toggle="collapse" data-bs-target="#riskDebate" aria-expanded="true">
+                <span><i class="fas fa-shield-alt me-2"></i>风险辩论</span>
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="collapse show" id="riskDebate">
+                <div class="section-content">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="debate-card">
+                                <h5 class="risky-view"><i class="fas fa-bolt me-2"></i>激进方观点</h5>
+                                <div id="riskyHistory"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="debate-card">
+                                <h5 class="safe-view"><i class="fas fa-shield-alt me-2"></i>保守方观点</h5>
+                                <div id="safeHistory"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="debate-card">
+                                <h5 class="neutral-view"><i class="fas fa-balance-scale me-2"></i>中立方观点</h5>
+                                <div id="neutralHistory"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="debate-card mt-3">
+                        <h5><i class="fas fa-history me-2"></i>风险辩论历史</h5>
+                        <div id="riskDebateHistory"></div>
+                    </div>
+                    <div class="debate-card">
+                        <h5><i class="fas fa-gavel me-2"></i>风险评判决策</h5>
+                        <div id="riskJudgeDecision"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 投资计划部分 -->
+        <div class="section-card">
+            <button class="section-header" type="button" data-bs-toggle="collapse" data-bs-target="#investmentPlan" aria-expanded="true">
+                <span><i class="fas fa-tasks me-2"></i>投资计划</span>
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="collapse show" id="investmentPlan">
+                <div class="section-content" id="investmentPlanContent"></div>
+            </div>
+        </div>
+
+        <!-- 最终决策部分 -->
+        <div class="section-card">
+            <button class="section-header" type="button" data-bs-toggle="collapse" data-bs-target="#finalDecision" aria-expanded="true">
+                <span><i class="fas fa-flag-checkered me-2"></i>最终决策</span>
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="collapse show" id="finalDecision">
+                <div class="section-content">
+                    <div class="final-decision" id="finalDecisionContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Download button and menu -->
+    <button class="download-btn" id="downloadBtn" title="导出报告">
+        <i class="fas fa-download"></i>
+    </button>
+    <div class="download-menu" id="downloadMenu">
+        <button onclick="downloadMarkdown()">
+            <i class="fab fa-markdown"></i>导出为 Markdown
+        </button>
+        <button onclick="downloadHTML()">
+            <i class="fas fa-code"></i>导出为 HTML
+        </button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化 marked 配置
+            marked.setOptions({
+                breaks: true,
+                gfm: true
+            });
+
+            // 定义渲染函数
+            function renderMarkdown(content) {
+                try {
+                    return marked.parse(content || '');
+                } catch (e) {
+                    console.error('Markdown rendering error:', e);
+                    return content || '';
+                }
+            }
+
+            // 定义渲染元素函数
+            function renderElement(elementId, content) {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    element.innerHTML = renderMarkdown(content);
+                }
+            }
+
+            // 准备报告数据
+            const reportData = JSON.parse(document.getElementById('reportData').textContent);
+            const markdownData = JSON.parse(document.getElementById('markdownData').textContent);
+
+            // 渲染各部分内容
+            renderElement('marketAnalysisContent', reportData.market_analysis);
+            renderElement('fundamentalAnalysisContent', reportData.fundamental_analysis);
+            renderElement('sentimentAnalysisContent', reportData.sentiment_analysis);
+            renderElement('newsAnalysisContent', reportData.news_analysis);
+
+            // 渲染投资辩论状态
+            const investmentDebate = reportData.investment_debate_state || {};
+            renderElement('bullHistory', investmentDebate.bull_history);
+            renderElement('bearHistory', investmentDebate.bear_history);
+            renderElement('debateHistory', investmentDebate.history);
+            renderElement('judgeDecision', investmentDebate.judge_decision);
+
+            // 渲染交易员决策
+            renderElement('traderDecisionContent', reportData.trader_investment_decision);
+
+            // 渲染风险辩论状态
+            const riskDebate = reportData.risk_debate_state || {};
+            renderElement('riskyHistory', riskDebate.risky_history);
+            renderElement('safeHistory', riskDebate.safe_history);
+            renderElement('neutralHistory', riskDebate.neutral_history);
+            renderElement('riskDebateHistory', riskDebate.history);
+            renderElement('riskJudgeDecision', riskDebate.judge_decision);
+
+            // 渲染投资计划和最终决策
+            renderElement('investmentPlanContent', reportData.investment_plan);
+            renderElement('finalDecisionContent', reportData.final_decision);
+
+            // 下载 Markdown 文件
+            function downloadMarkdown() {
+                const blob = new Blob([markdownData.content], { type: 'text/markdown' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `report_${reportData.company}_${reportData.trade_date}.md`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                downloadMenu.classList.remove('show');
+            }
+
+            // 下载 HTML 文件
+            function downloadHTML() {
+                const htmlContent = document.documentElement.outerHTML;
+                const blob = new Blob([htmlContent], { type: 'text/html' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `report_${reportData.company}_${reportData.trade_date}.html`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                downloadMenu.classList.remove('show');
+            }
+
+            // 设置下载按钮事件
+            const downloadBtn = document.getElementById('downloadBtn');
+            const downloadMenu = document.getElementById('downloadMenu');
+
+            // 切换下载菜单显示
+            downloadBtn.addEventListener('click', () => {
+                downloadMenu.classList.toggle('show');
+            });
+
+            // 点击其他地方关闭菜单
+            document.addEventListener('click', (e) => {
+                if (!downloadBtn.contains(e.target) && !downloadMenu.contains(e.target)) {
+                    downloadMenu.classList.remove('show');
+                }
+            });
+
+            // 设置下载按钮事件
+            document.querySelector('[data-action="download-md"]').addEventListener('click', downloadMarkdown);
+            document.querySelector('[data-action="download-html"]').addEventListener('click', downloadHTML);
+        });
+    </script>
+    
+    <!-- 数据存储 -->
+    <script type="application/json" id="reportData">
+        {
+            "market_analysis": {{ market_analysis|tojson }},
+            "fundamental_analysis": {{ fundamental_analysis|tojson }},
+            "sentiment_analysis": {{ sentiment_analysis|tojson }},
+            "news_analysis": {{ news_analysis|tojson }},
+            "investment_debate_state": {{ investment_debate_state|tojson }},
+            "trader_investment_decision": {{ trader_investment_decision|tojson }},
+            "risk_debate_state": {{ risk_debate_state|tojson }},
+            "investment_plan": {{ investment_plan|tojson }},
+            "final_decision": {{ final_decision|tojson }},
+            "company": {{ company|tojson }},
+            "trade_date": {{ trade_date|tojson }}
+        }
+    </script>
+
+    <script type="application/json" id="markdownData">
+        {
+            "content": {{ markdown_content|tojson }}
+        }
+    </script>
+</body>
+</html> 
