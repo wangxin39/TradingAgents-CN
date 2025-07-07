@@ -224,3 +224,24 @@ if __name__ == "__main__":
 ## 许可证
 
 本项目遵循Apache 2.0许可证。
+
+
+
+## 新增的测试文件
+
+### 集成测试
+- `quick_test.py` - 快速集成测试，验证基本功能
+- `test_smart_system.py` - 智能系统完整测试
+- `demo_fallback_system.py` - 降级系统演示和测试
+
+### 运行方法
+```bash
+# 快速测试
+python tests/quick_test.py
+
+# 智能系统测试
+python tests/test_smart_system.py
+
+# 降级系统演示
+python tests/demo_fallback_system.py
+

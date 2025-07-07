@@ -96,6 +96,8 @@
 - **新闻数据**: Google News、财经新闻、实时新闻API
 - **社交数据**: Reddit、Twitter情绪分析
 - **中文数据**: AkShare、Tushare 金融数据支持
+- **数据库支持**: MongoDB 数据持久化 + Redis 高速缓存
+- **智能降级**: MongoDB → 通达信API → 本地缓存的多层数据源
 
 ### 🚀 高性能特性
 
@@ -103,6 +105,9 @@
 - **智能缓存**: 多层缓存策略，减少API调用成本
 - **实时分析**: 支持实时市场数据分析
 - **灵活配置**: 高度可定制的智能体行为和模型选择
+- **📁 数据目录配置**: 灵活的数据存储路径配置，支持CLI、环境变量等多种方式
+- **⚡ 数据库加速**: Redis毫秒级缓存 + MongoDB持久化存储
+- **🔄 高可用架构**: 多层数据源降级，确保服务稳定性
 
 ### 🌐 Web管理界面
 
@@ -125,6 +130,8 @@
 | 配置说明 | 基础配置 | 详细的配置优化指南     |
 | 故障排除 | 无       | 完整的FAQ和故障排除    |
 | 代码注释 | 英文     | 中文注释和说明         |
+| 数据存储 | 仅API调用 | MongoDB + Redis 数据库支持 |
+| 缓存机制 | 基础缓存 | 多层智能缓存 + 降级机制 |
 
 ### 🔄 计划中的增强
 
@@ -169,6 +176,9 @@ pip install -r requirements.txt
 
 # 4. 安装A股数据支持（可选）
 pip install pytdx  # 通达信API，用于A股实时数据
+
+# 5. 安装数据库支持（可选，推荐）
+pip install -r requirements_db.txt  # MongoDB + Redis 支持
 ```
 
 ### 配置API密钥
@@ -185,6 +195,16 @@ FINNHUB_API_KEY=your_finnhub_api_key_here
 # 可选：减少新闻滞后性的API密钥
 ALPHA_VANTAGE_API_KEY=your_alpha_vantage_api_key_here
 NEWSAPI_KEY=your_newsapi_key_here
+
+
+# 可选：数据库配置（提升性能）
+MONGODB_HOST=localhost
+MONGODB_PORT=27017
+MONGODB_DATABASE=trading_agents
+REDIS_HOST=localhost
+REDIS_PORT=6379
+ENABLE_MONGODB=true
+ENABLE_REDIS=true
 ```
 
 #### 使用国外模型
@@ -195,6 +215,187 @@ set FINNHUB_API_KEY=your_finnhub_api_key
 
 # 或其他模型...
 ```
+
+
+### 🗄️ 数据库配置（MongoDB + Redis）
+
+#### 新增功能：高性能数据存储支持
+
+本项目现已支持 **MongoDB** 和 **Redis** 数据库，提供：
+- **📊 股票数据缓存**: 减少API调用，提升响应速度
+- **🔄 智能降级机制**: MongoDB → 通达信API → 本地缓存的多层数据源
+- **⚡ 高性能缓存**: Redis缓存热点数据，毫秒级响应
+- **🛡️ 数据持久化**: MongoDB存储历史数据，支持离线分析
+
+#### 快速启动数据库服务
+
+**方式一：Docker Compose（推荐）**
+```bash
+# 启动 MongoDB + Redis 服务
+docker-compose up -d
+
+# 查看服务状态
+docker-compose ps
+
+# 停止服务
+docker-compose down
+```
+
+**方式二：手动安装**
+```bash
+# 安装数据库依赖
+pip install -r requirements_db.txt
+
+# 启动 MongoDB (默认端口 27017)
+mongod --dbpath ./data/mongodb
+
+# 启动 Redis (默认端口 6379)
+redis-server
+```
+
+#### 数据库配置选项
+
+**环境变量配置**（推荐）：
+```bash
+# MongoDB 配置
+MONGODB_HOST=localhost
+MONGODB_PORT=27017
+MONGODB_DATABASE=trading_agents
+MONGODB_USERNAME=admin
+MONGODB_PASSWORD=your_password
+
+# Redis 配置
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=your_redis_password
+REDIS_DB=0
+```
+
+**配置文件方式**：
+```python
+# config/database_config.py
+DATABASE_CONFIG = {
+    'mongodb': {
+        'host': 'localhost',
+        'port': 27017,
+        'database': 'trading_agents',
+        'username': 'admin',
+        'password': 'your_password'
+    },
+    'redis': {
+        'host': 'localhost',
+        'port': 6379,
+        'password': 'your_redis_password',
+        'db': 0
+    }
+}
+```
+
+#### 数据库功能特性
+
+**MongoDB 功能**：
+- ✅ 股票基础信息存储
+- ✅ 历史价格数据缓存
+- ✅ 分析结果持久化
+- ✅ 用户配置管理
+- ✅ 自动数据同步
+
+**Redis 功能**：
+- ⚡ 实时价格数据缓存
+- ⚡ API响应结果缓存
+- ⚡ 会话状态管理
+- ⚡ 热点数据预加载
+- ⚡ 分布式锁支持
+
+#### 智能降级机制
+
+系统采用多层数据源降级策略，确保高可用性：
+
+```
+📊 数据获取流程：
+1. 🔍 检查 Redis 缓存 (毫秒级)
+2. 📚 查询 MongoDB 存储 (秒级)
+3. 🌐 调用通达信API (秒级)
+4. 💾 本地文件缓存 (备用)
+5. ❌ 返回错误信息
+```
+
+**配置降级策略**：
+```python
+# 在 .env 文件中配置
+ENABLE_MONGODB=true
+ENABLE_REDIS=true
+ENABLE_FALLBACK=true
+
+# 缓存过期时间（秒）
+REDIS_CACHE_TTL=300
+MONGODB_CACHE_TTL=3600
+```
+
+#### 性能优化建议
+
+**生产环境配置**：
+```bash
+# MongoDB 优化
+MONGODB_MAX_POOL_SIZE=50
+MONGODB_MIN_POOL_SIZE=5
+MONGODB_MAX_IDLE_TIME=30000
+
+# Redis 优化
+REDIS_MAX_CONNECTIONS=20
+REDIS_CONNECTION_POOL_SIZE=10
+REDIS_SOCKET_TIMEOUT=5
+```
+
+#### 数据库管理工具
+
+```bash
+# 初始化数据库
+python scripts/init_database.py
+
+# 数据库状态检查
+python scripts/check_database_status.py
+
+# 数据同步工具
+python scripts/sync_stock_data.py
+
+# 清理过期缓存
+python scripts/cleanup_cache.py
+```
+
+#### 故障排除
+
+**常见问题解决**：
+
+1. **MongoDB连接失败**
+   ```bash
+   # 检查服务状态
+   docker-compose logs mongodb
+   
+   # 重启服务
+   docker-compose restart mongodb
+   ```
+
+2. **Redis连接超时**
+   ```bash
+   # 检查Redis状态
+   redis-cli ping
+   
+   # 清理Redis缓存
+   redis-cli flushdb
+   ```
+
+3. **数据同步问题**
+   ```bash
+   # 手动触发数据同步
+   python scripts/manual_sync.py
+   ```
+
+> 💡 **提示**: 即使不配置数据库，系统仍可正常运行，会自动降级到API直接调用模式。数据库配置是可选的性能优化功能。
+
+> 📚 **详细文档**: 更多数据库配置信息请参考 [数据库架构文档](docs/architecture/database-architecture.md)
+
+
 
 ### 基本使用
 
@@ -271,6 +472,49 @@ python examples/openai/demo_openai.py
 # 集成测试
 python tests/integration/test_dashscope_integration.py
 ```
+
+
+#### 📁 数据目录配置
+
+**新功能**: 灵活配置数据存储路径，支持多种配置方式：
+
+```bash
+# 查看当前数据目录配置
+python -m cli.main data-config --show
+
+# 设置自定义数据目录
+python -m cli.main data-config --set /path/to/your/data
+
+# 重置为默认配置
+python -m cli.main data-config --reset
+```
+
+**环境变量配置**:
+```bash
+# Windows
+set TRADING_AGENTS_DATA_DIR=C:\MyTradingData
+
+# Linux/macOS
+export TRADING_AGENTS_DATA_DIR=/home/user/trading_data
+```
+
+**程序化配置**:
+```python
+from tradingagents.config_manager import ConfigManager
+
+# 设置数据目录
+config_manager = ConfigManager()
+config_manager.set_data_directory("/path/to/data")
+
+# 获取配置
+data_dir = config_manager.get_data_directory()
+print(f"数据目录: {data_dir}")
+```
+
+**配置优先级**: 程序设置 > 环境变量 > 配置文件 > 默认值
+
+详细说明请参考: [📁 数据目录配置指南](docs/configuration/data-directory-configuration.md)
+
 
 ### 交互式分析
 

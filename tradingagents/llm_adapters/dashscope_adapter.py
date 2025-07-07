@@ -15,7 +15,7 @@ from langchain_core.utils.function_calling import convert_to_openai_tool
 from pydantic import Field, SecretStr
 import dashscope
 from dashscope import Generation
-
+from ..config.config_manager import token_tracker
 
 class ChatDashScope(BaseChatModel):
     """阿里百炼大模型的 LangChain 适配器"""
@@ -124,6 +124,48 @@ class ChatDashScope(BaseChatModel):
                 # 解析响应
                 output = response.output
                 message_content = output.choices[0].message.content
+                
+                # 提取token使用量信息
+                input_tokens = 0
+                output_tokens = 0
+                
+                # DashScope API响应中包含usage信息
+                if hasattr(response, 'usage') and response.usage:
+                    usage = response.usage
+                    # 根据API文档，usage可能包含input_tokens和output_tokens
+                    if hasattr(usage, 'input_tokens'):
+                        input_tokens = usage.input_tokens
+                    if hasattr(usage, 'output_tokens'):
+                        output_tokens = usage.output_tokens
+                    # 有些情况下可能是total_tokens
+                    elif hasattr(usage, 'total_tokens'):
+                        # 估算输入和输出token（如果没有分别提供）
+                        total_tokens = usage.total_tokens
+                        # 简单估算：假设输入占30%，输出占70%
+                        input_tokens = int(total_tokens * 0.3)
+                        output_tokens = int(total_tokens * 0.7)
+                
+                # 记录token使用量
+                if input_tokens > 0 or output_tokens > 0:
+                    try:
+                        # 生成会话ID（如果没有提供）
+                        session_id = kwargs.get('session_id', f"dashscope_{hash(str(messages))%10000}")
+                        analysis_type = kwargs.get('analysis_type', 'stock_analysis')
+                        
+                        # 使用TokenTracker记录使用量
+                        token_tracker.track_usage(
+                            provider="dashscope",
+                            model_name=self.model,
+                            input_tokens=input_tokens,
+                            output_tokens=output_tokens,
+                            session_id=session_id,
+                            analysis_type=analysis_type
+                        )
+                    except Exception as track_error:
+                        # 记录失败不应该影响主要功能
+                        print(f"Token tracking failed: {track_error}")
+                
+
                 
                 # 创建 AI 消息
                 ai_message = AIMessage(content=message_content)

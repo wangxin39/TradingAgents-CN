@@ -12,6 +12,12 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 from dotenv import load_dotenv
 
+try:
+    from .mongodb_storage import MongoDBStorage
+    MONGODB_AVAILABLE = True
+except ImportError:
+    MONGODB_AVAILABLE = False
+    MongoDBStorage = None
 
 @dataclass
 class ModelConfig:
@@ -63,6 +69,10 @@ class ConfigManager:
         # 加载.env文件（保持向后兼容）
         self._load_env_file()
 
+        # 初始化MongoDB存储（如果可用）
+        self.mongodb_storage = None
+        self._init_mongodb_storage()
+
         self._init_default_configs()
 
     def _load_env_file(self):
@@ -80,7 +90,8 @@ class ConfigManager:
             "dashscope": "DASHSCOPE_API_KEY",
             "openai": "OPENAI_API_KEY",
             "google": "GOOGLE_API_KEY",
-            "anthropic": "ANTHROPIC_API_KEY"
+            "anthropic": "ANTHROPIC_API_KEY",
+            "deepseek": "DEEPSEEK_API_KEY"
         }
 
         env_key = env_key_map.get(provider.lower())
@@ -88,10 +99,42 @@ class ConfigManager:
             return os.getenv(env_key, "")
         return ""
 
+    def _init_mongodb_storage(self):
+        """初始化MongoDB存储"""
+        if not MONGODB_AVAILABLE:
+            return
+        
+        # 检查是否启用MongoDB存储
+        use_mongodb = os.getenv("USE_MONGODB_STORAGE", "false").lower() == "true"
+        if not use_mongodb:
+            return
+        
+        try:
+            connection_string = os.getenv("MONGODB_CONNECTION_STRING")
+            database_name = os.getenv("MONGODB_DATABASE_NAME", "tradingagents")
+            
+            self.mongodb_storage = MongoDBStorage(
+                connection_string=connection_string,
+                database_name=database_name
+            )
+            
+            if self.mongodb_storage.is_connected():
+                print("✅ MongoDB存储已启用")
+            else:
+                self.mongodb_storage = None
+                print("⚠️ MongoDB连接失败，将使用JSON文件存储")
+                
+        except Exception as e:
+            print(f"❌ MongoDB初始化失败: {e}")
+            self.mongodb_storage = None
+
     def _init_default_configs(self):
         """初始化默认配置"""
         # 默认模型配置
         if not self.models_file.exists():
+            # 导入默认数据目录配置
+            import os
+            default_data_dir = os.path.join(os.path.expanduser("~"), "Documents", "TradingAgents", "data")
             default_models = [
                 ModelConfig(
                     provider="dashscope",
@@ -155,6 +198,9 @@ class ConfigManager:
         
         # 默认设置
         if not self.settings_file.exists():
+            # 导入默认数据目录配置
+            import os
+            default_data_dir = os.path.join(os.path.expanduser("~"), "Documents", "TradingAgents", "data")
             default_settings = {
                 "default_provider": "dashscope",
                 "default_model": "qwen-turbo",
@@ -162,7 +208,11 @@ class ConfigManager:
                 "cost_alert_threshold": 100.0,  # 成本警告阈值
                 "currency_preference": "CNY",
                 "auto_save_usage": True,
-                "max_usage_records": 10000
+                "max_usage_records": 10000,
+                "data_dir": default_data_dir,  # 数据目录配置
+                "cache_dir": os.path.join(default_data_dir, "cache"),  # 缓存目录
+                "results_dir": os.path.join(os.path.expanduser("~"), "Documents", "TradingAgents", "results"),  # 结果目录
+                "auto_create_dirs": True  # 自动创建目录
             }
             self.save_settings(default_settings)
     
@@ -252,7 +302,16 @@ class ConfigManager:
             session_id=session_id,
             analysis_type=analysis_type
         )
+
+        # 优先使用MongoDB存储
+        if self.mongodb_storage and self.mongodb_storage.is_connected():
+            success = self.mongodb_storage.save_usage_record(record)
+            if success:
+                return record
+            else:
+                print("⚠️ MongoDB保存失败，回退到JSON文件存储")
         
+        # 回退到JSON文件存储        
         records = self.load_usage_records()
         records.append(record)
         
@@ -293,6 +352,8 @@ class ConfigManager:
             "reddit_client_secret": os.getenv("REDDIT_CLIENT_SECRET", ""),
             "reddit_user_agent": os.getenv("REDDIT_USER_AGENT", ""),
             "results_dir": os.getenv("TRADINGAGENTS_RESULTS_DIR", "./results"),
+            "data_dir": os.getenv("TRADINGAGENTS_DATA_DIR", ""),  # 数据目录环境变量
+            "cache_dir": os.getenv("TRADINGAGENTS_CACHE_DIR", ""),  # 缓存目录环境变量
             "log_level": os.getenv("TRADINGAGENTS_LOG_LEVEL", "INFO"),
             "alpha_vantage_api_key": os.getenv("ALPHA_VANTAGE_API_KEY", ""),
             "newsapi_key": os.getenv("NEWSAPI_KEY", ""),
@@ -346,6 +407,22 @@ class ConfigManager:
     
     def get_usage_statistics(self, days: int = 30) -> Dict[str, Any]:
         """获取使用统计"""
+        # 优先使用MongoDB获取统计
+        if self.mongodb_storage and self.mongodb_storage.is_connected():
+            try:
+                # 从MongoDB获取基础统计
+                stats = self.mongodb_storage.get_usage_statistics(days)
+                # 获取供应商统计
+                provider_stats = self.mongodb_storage.get_provider_statistics(days)
+                
+                if stats:
+                    stats["provider_stats"] = provider_stats
+                    stats["records_count"] = stats.get("total_requests", 0)
+                    return stats
+            except Exception as e:
+                print(f"⚠️ MongoDB统计获取失败，回退到JSON文件: {e}")
+        
+        # 回退到JSON文件统计
         records = self.load_usage_records()
         
         # 过滤最近N天的记录
@@ -390,6 +467,48 @@ class ConfigManager:
             "provider_stats": provider_stats,
             "records_count": len(recent_records)
         }
+    def get_data_dir(self) -> str:
+        """获取数据目录路径"""
+        settings = self.load_settings()
+        data_dir = settings.get("data_dir")
+        if not data_dir:
+            # 如果没有配置，使用默认路径
+            data_dir = os.path.join(os.path.expanduser("~"), "Documents", "TradingAgents", "data")
+        return data_dir
+
+    def set_data_dir(self, data_dir: str):
+        """设置数据目录路径"""
+        settings = self.load_settings()
+        settings["data_dir"] = data_dir
+        # 同时更新缓存目录
+        settings["cache_dir"] = os.path.join(data_dir, "cache")
+        self.save_settings(settings)
+        
+        # 如果启用自动创建目录，则创建目录
+        if settings.get("auto_create_dirs", True):
+            self.ensure_directories_exist()
+
+    def ensure_directories_exist(self):
+        """确保必要的目录存在"""
+        settings = self.load_settings()
+        
+        directories = [
+            settings.get("data_dir"),
+            settings.get("cache_dir"),
+            settings.get("results_dir"),
+            os.path.join(settings.get("data_dir", ""), "finnhub_data"),
+            os.path.join(settings.get("data_dir", ""), "finnhub_data", "news_data"),
+            os.path.join(settings.get("data_dir", ""), "finnhub_data", "insider_sentiment"),
+            os.path.join(settings.get("data_dir", ""), "finnhub_data", "insider_transactions")
+        ]
+        
+        for directory in directories:
+            if directory and not os.path.exists(directory):
+                try:
+                    os.makedirs(directory, exist_ok=True)
+                    print(f"✅ 创建目录: {directory}")
+                except Exception as e:
+                    print(f"❌ 创建目录失败 {directory}: {e}")
 
 
 class TokenTracker:

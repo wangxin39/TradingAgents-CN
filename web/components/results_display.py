@@ -159,7 +159,7 @@ def render_decision_summary(decision, stock_symbol=None):
         )
 
     with col4:
-        target_price = decision.get('target_price', 'N/A')
+        target_price = decision.get('target_price')
         print(f"🔍 [DEBUG] target_price from decision: {target_price}, type: {type(target_price)}")
         print(f"🔍 [DEBUG] decision keys: {list(decision.keys()) if isinstance(decision, dict) else 'Not a dict'}")
 
@@ -171,16 +171,31 @@ def render_decision_summary(decision, stock_symbol=None):
         is_china = is_china_stock(stock_symbol)
         currency_symbol = "¥" if is_china else "$"
 
-        if isinstance(target_price, (int, float)):
-            price_display = f"{currency_symbol}{target_price}"
+        # if isinstance(target_price, (int, float)):
+        #     price_display = f"{currency_symbol}{target_price}"
+        # else:
+        #     price_display = str(target_price)
+
+        # st.metric(
+        #     label="目标价位",
+        #     value=price_display,
+        #     help="AI预测的目标价位"
+        # )
+
+        # 处理目标价格显示
+        if target_price is not None and isinstance(target_price, (int, float)) and target_price > 0:
+            price_display = f"{currency_symbol}{target_price:.2f}"
+            help_text = "AI预测的目标价位"
         else:
-            price_display = str(target_price)
+            price_display = "待分析"
+            help_text = "目标价位需要更详细的分析才能确定"
 
         st.metric(
             label="目标价位",
             value=price_display,
-            help="AI预测的目标价位"
+            help=help_text
         )
+
     
     # 分析推理
     if 'reasoning' in decision and decision['reasoning']:

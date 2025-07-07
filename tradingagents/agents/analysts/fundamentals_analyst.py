@@ -33,31 +33,74 @@ def create_fundamentals_analyst_react(llm, toolkit):
                 class ChinaStockDataTool(BaseTool):
                     name: str = "get_china_stock_data"
                     description: str = f"获取中国A股股票{ticker}的实时和历史数据。直接调用，无需参数。"
-
                     def _run(self, query: str = "") -> str:
                         try:
                             print(f"📊 [DEBUG] ChinaStockDataTool调用，股票代码: {ticker}")
-                            return toolkit.get_china_stock_data.invoke({
-                                'stock_code': ticker,
-                                'start_date': '2025-05-28',
-                                'end_date': current_date
-                            })
+                    #         return toolkit.get_china_stock_data.invoke({
+                    #             'stock_code': ticker,
+                    #             'start_date': '2025-05-28',
+                    #             'end_date': current_date
+                    #         })
+                    #     except Exception as e:
+                    #         return f"获取股票数据失败: {str(e)}"
+                            # 使用优化的缓存数据获取
+                            from tradingagents.dataflows.optimized_china_data import get_china_stock_data_cached
+                            return get_china_stock_data_cached(
+                                symbol=ticker,
+                                start_date='2025-05-28',
+                                end_date=current_date,
+                                force_refresh=False
+                            )
                         except Exception as e:
-                            return f"获取股票数据失败: {str(e)}"
+                            print(f"❌ 优化A股数据获取失败: {e}")
+                            # 备用方案：使用原始API
+                            try:
+                                return toolkit.get_china_stock_data.invoke({
+                                    'stock_code': ticker,
+                                    'start_date': '2025-05-28',
+                                    'end_date': current_date
+                                })
+                            except Exception as e2:
+                                return f"获取股票数据失败: {str(e2)}"
+
 
                 class ChinaFundamentalsTool(BaseTool):
                     name: str = "get_china_fundamentals"
-                    description: str = f"获取中国A股股票{ticker}的基本面分析。直接调用，无需参数。"
+                    # description: str = f"获取中国A股股票{ticker}的基本面分析。直接调用，无需参数。"
+
+                    # def _run(self, query: str = "") -> str:
+                    #     try:
+                    #         print(f"📊 [DEBUG] ChinaFundamentalsTool调用，股票代码: {ticker}")
+                    #         return toolkit.get_china_fundamentals.invoke({
+                    #             'ticker': ticker,
+                    #             'curr_date': current_date
+                    #         })
+                    #     except Exception as e:
+                    #         return f"获取基本面数据失败: {str(e)}"
+
+                    description: str = f"获取中国A股股票{ticker}的基本面分析（优化缓存版本）。直接调用，无需参数。"
 
                     def _run(self, query: str = "") -> str:
                         try:
                             print(f"📊 [DEBUG] ChinaFundamentalsTool调用，股票代码: {ticker}")
-                            return toolkit.get_china_fundamentals.invoke({
-                                'ticker': ticker,
-                                'curr_date': current_date
-                            })
+                            # 使用优化的缓存基本面数据获取
+                            from tradingagents.dataflows.optimized_china_data import get_china_fundamentals_cached
+                            return get_china_fundamentals_cached(
+                                symbol=ticker,
+                                force_refresh=False
+                            )
                         except Exception as e:
-                            return f"获取基本面数据失败: {str(e)}"
+                            print(f"❌ 优化A股基本面数据获取失败: {e}")
+                            # 备用方案：使用原始API
+                            try:
+                                return toolkit.get_china_fundamentals.invoke({
+                                    'ticker': ticker,
+                                    'curr_date': current_date
+                                })
+                            except Exception as e2:
+                                return f"获取基本面数据失败: {str(e2)}"
+
+
 
                 tools = [ChinaStockDataTool(), ChinaFundamentalsTool()]
                 query = f"""请对中国A股股票{ticker}进行详细的基本面分析。
@@ -91,13 +134,31 @@ def create_fundamentals_analyst_react(llm, toolkit):
                     def _run(self, query: str = "") -> str:
                         try:
                             print(f"📊 [DEBUG] USStockDataTool调用，股票代码: {ticker}")
-                            return toolkit.get_YFin_data_online.invoke({
-                                'symbol': ticker,
-                                'start_date': '2025-05-28',
-                                'end_date': current_date
-                            })
+                            # return toolkit.get_YFin_data_online.invoke({
+                            #     'symbol': ticker,
+                            #     'start_date': '2025-05-28',
+                            #     'end_date': current_date
+                            # })
+                            # 使用优化的缓存数据获取
+                            from tradingagents.dataflows.optimized_us_data import get_us_stock_data_cached
+                            return get_us_stock_data_cached(
+                                symbol=ticker,
+                                start_date='2025-05-28',
+                                end_date=current_date,
+                                force_refresh=False
+                            )
                         except Exception as e:
-                            return f"获取股票数据失败: {str(e)}"
+                            # return f"获取股票数据失败: {str(e)}"
+                            print(f"❌ 优化美股数据获取失败: {str(e)}")
+                            # 备用方案：使用原始API
+                            try:
+                                return toolkit.get_YFin_data_online.invoke({
+                                    'symbol': ticker,
+                                    'start_date': '2025-05-28',
+                                    'end_date': current_date
+                                })
+                            except Exception as e2:
+                                return f"获取股票数据失败: {str(e2)}"
 
                 class USFundamentalsTool(BaseTool):
                     name: str = "get_us_fundamentals"
@@ -266,22 +327,33 @@ def create_fundamentals_analyst(llm, toolkit):
                 f"🔴 第二步：立即调用 get_china_fundamentals 工具"
                 f"参数：ticker='{ticker}', curr_date='{current_date}'"
                 ""
+                "📊 分析要求："
+                "- 基于真实财务数据进行深度估值分析"
+                "- 计算并提供合理价位区间（使用人民币¥）"
+                "- 分析当前股价是否被低估或高估"
+                "- 提供基于基本面的目标价位建议"
+                "- 包含PE、PB、PEG等估值指标分析"
+                "- 结合行业平均估值水平进行对比"
+                ""
                 "🚫 严格禁止："
                 "- 不允许说'我将调用工具'"
                 "- 不允许假设任何数据"
                 "- 不允许编造公司信息"
                 "- 不允许直接回答而不调用工具"
+                "- 不允许回复'无法确定价位'或'需要更多信息'"
                 ""
                 "✅ 你必须："
                 "- 立即调用工具"
                 "- 等待工具返回真实数据"
                 "- 基于真实数据进行分析"
+                "- 提供具体的价位区间和目标价"
                 ""
                 "现在立即开始调用工具！不要说任何其他话！"
             )
         else:
             system_message = (
                 "你是一位研究员，负责分析公司过去一周的基本面信息。请撰写一份关于公司基本面信息的综合报告，包括财务文件、公司概况、基本公司财务、公司财务历史、内部人情绪和内部人交易，以全面了解公司的基本面信息来为交易者提供信息。确保包含尽可能多的细节。不要简单地说趋势是混合的，提供详细和细粒度的分析和见解，可能帮助交易者做出决策。"
+                + "📊 估值分析要求：基于财务数据计算合理估值区间，提供目标价位建议（使用美元$），包含PE、PB、DCF等估值方法分析，不允许回复'无法确定价位'。"
                 + "确保在报告末尾附加一个Markdown表格来组织报告中的要点，使其有组织且易于阅读。请确保所有分析都使用中文。"
             )
 

@@ -44,7 +44,16 @@ def get_finnhub_news(
     result = get_data_in_range(ticker, before, curr_date, "news_data", DATA_DIR)
 
     if len(result) == 0:
-        return ""
+        # return ""
+
+        error_msg = f"⚠️ 无法获取{ticker}的新闻数据 ({before} 到 {curr_date})\n"
+        error_msg += f"可能的原因：\n"
+        error_msg += f"1. 数据文件不存在或路径配置错误\n"
+        error_msg += f"2. 指定日期范围内没有新闻数据\n"
+        error_msg += f"3. 需要先下载或更新Finnhub新闻数据\n"
+        error_msg += f"建议：检查数据目录配置或重新获取新闻数据"
+        print(f"📰 [DEBUG] {error_msg}")
+        return error_msg
 
     combined_result = ""
     for day, data in result.items():
@@ -773,36 +782,250 @@ def get_global_news_openai(curr_date):
     return response.output[1].content[0].text
 
 
+def get_fundamentals_finnhub(ticker, curr_date):
+    """
+    使用Finnhub API获取股票基本面数据作为OpenAI的备选方案
+    Args:
+        ticker (str): 股票代码
+        curr_date (str): 当前日期，格式为yyyy-mm-dd
+    Returns:
+        str: 格式化的基本面数据报告
+    """
+    try:
+        import finnhub
+        import os
+        from .cache_manager import get_cache
+        
+        # 检查缓存
+        cache = get_cache()
+        cached_key = cache.find_cached_fundamentals_data(ticker, data_source="finnhub")
+        if cached_key:
+            cached_data = cache.load_fundamentals_data(cached_key)
+            if cached_data:
+                print(f"💾 [DEBUG] 从缓存加载Finnhub基本面数据: {ticker}")
+                return cached_data
+        
+        # 获取Finnhub API密钥
+        api_key = os.getenv('FINNHUB_API_KEY')
+        if not api_key:
+            return "错误：未配置FINNHUB_API_KEY环境变量"
+        
+        # 初始化Finnhub客户端
+        finnhub_client = finnhub.Client(api_key=api_key)
+        
+        print(f"📊 [DEBUG] 使用Finnhub API获取 {ticker} 的基本面数据...")
+        
+        # 获取基本财务数据
+        try:
+            basic_financials = finnhub_client.company_basic_financials(ticker, 'all')
+        except Exception as e:
+            print(f"❌ [DEBUG] Finnhub基本财务数据获取失败: {str(e)}")
+            basic_financials = None
+        
+        # 获取公司概况
+        try:
+            company_profile = finnhub_client.company_profile2(symbol=ticker)
+        except Exception as e:
+            print(f"❌ [DEBUG] Finnhub公司概况获取失败: {str(e)}")
+            company_profile = None
+        
+        # 获取收益数据
+        try:
+            earnings = finnhub_client.company_earnings(ticker, limit=4)
+        except Exception as e:
+            print(f"❌ [DEBUG] Finnhub收益数据获取失败: {str(e)}")
+            earnings = None
+        
+        # 格式化报告
+        report = f"# {ticker} 基本面分析报告（Finnhub数据源）\n\n"
+        report += f"**数据获取时间**: {curr_date}\n"
+        report += f"**数据来源**: Finnhub API\n\n"
+        
+        # 公司概况部分
+        if company_profile:
+            report += "## 公司概况\n"
+            report += f"- **公司名称**: {company_profile.get('name', 'N/A')}\n"
+            report += f"- **行业**: {company_profile.get('finnhubIndustry', 'N/A')}\n"
+            report += f"- **国家**: {company_profile.get('country', 'N/A')}\n"
+            report += f"- **货币**: {company_profile.get('currency', 'N/A')}\n"
+            report += f"- **市值**: {company_profile.get('marketCapitalization', 'N/A')} 百万美元\n"
+            report += f"- **流通股数**: {company_profile.get('shareOutstanding', 'N/A')} 百万股\n\n"
+        
+        # 基本财务指标
+        if basic_financials and 'metric' in basic_financials:
+            metrics = basic_financials['metric']
+            report += "## 关键财务指标\n"
+            report += "| 指标 | 数值 |\n"
+            report += "|------|------|\n"
+            
+            # 估值指标
+            if 'peBasicExclExtraTTM' in metrics:
+                report += f"| 市盈率 (PE) | {metrics['peBasicExclExtraTTM']:.2f} |\n"
+            if 'psAnnual' in metrics:
+                report += f"| 市销率 (PS) | {metrics['psAnnual']:.2f} |\n"
+            if 'pbAnnual' in metrics:
+                report += f"| 市净率 (PB) | {metrics['pbAnnual']:.2f} |\n"
+            
+            # 盈利能力指标
+            if 'roeTTM' in metrics:
+                report += f"| 净资产收益率 (ROE) | {metrics['roeTTM']:.2f}% |\n"
+            if 'roaTTM' in metrics:
+                report += f"| 总资产收益率 (ROA) | {metrics['roaTTM']:.2f}% |\n"
+            if 'netProfitMarginTTM' in metrics:
+                report += f"| 净利润率 | {metrics['netProfitMarginTTM']:.2f}% |\n"
+            
+            # 财务健康指标
+            if 'currentRatioAnnual' in metrics:
+                report += f"| 流动比率 | {metrics['currentRatioAnnual']:.2f} |\n"
+            if 'totalDebt/totalEquityAnnual' in metrics:
+                report += f"| 负债权益比 | {metrics['totalDebt/totalEquityAnnual']:.2f} |\n"
+            
+            report += "\n"
+        
+        # 收益历史
+        if earnings:
+            report += "## 收益历史\n"
+            report += "| 季度 | 实际EPS | 预期EPS | 差异 |\n"
+            report += "|------|---------|---------|------|\n"
+            for earning in earnings[:4]:  # 显示最近4个季度
+                actual = earning.get('actual', 'N/A')
+                estimate = earning.get('estimate', 'N/A')
+                period = earning.get('period', 'N/A')
+                surprise = earning.get('surprise', 'N/A')
+                report += f"| {period} | {actual} | {estimate} | {surprise} |\n"
+            report += "\n"
+        
+        # 数据可用性说明
+        report += "## 数据说明\n"
+        report += "- 本报告使用Finnhub API提供的官方财务数据\n"
+        report += "- 数据来源于公司财报和SEC文件\n"
+        report += "- TTM表示过去12个月数据\n"
+        report += "- Annual表示年度数据\n\n"
+        
+        if not basic_financials and not company_profile and not earnings:
+            report += "⚠️ **警告**: 无法获取该股票的基本面数据，可能原因：\n"
+            report += "- 股票代码不正确\n"
+            report += "- Finnhub API限制\n"
+            report += "- 该股票暂无基本面数据\n"
+        
+        # 保存到缓存
+        if report and len(report) > 100:  # 只有当报告有实际内容时才缓存
+            cache.save_fundamentals_data(ticker, report, data_source="finnhub")
+        
+        print(f"📊 [DEBUG] Finnhub基本面数据获取完成，报告长度: {len(report)}")
+        return report
+        
+    except ImportError:
+        return "错误：未安装finnhub-python库，请运行: pip install finnhub-python"
+    except Exception as e:
+        print(f"❌ [DEBUG] Finnhub基本面数据获取失败: {str(e)}")
+        return f"Finnhub基本面数据获取失败: {str(e)}"
+
+
 def get_fundamentals_openai(ticker, curr_date):
-    config = get_config()
-    client = OpenAI(base_url=config["backend_url"])
+    """
+    获取股票基本面数据，优先使用OpenAI，失败时回退到Finnhub API
+    支持缓存机制以提高性能
+    Args:
+        ticker (str): 股票代码
+        curr_date (str): 当前日期，格式为yyyy-mm-dd
+    Returns:
+        str: 基本面数据报告
+    """
+    try:
+        from .cache_manager import get_cache
+        
+        # 检查缓存 - 优先检查OpenAI缓存
+        cache = get_cache()
+        cached_key = cache.find_cached_fundamentals_data(ticker, data_source="openai")
+        if cached_key:
+            cached_data = cache.load_fundamentals_data(cached_key)
+            if cached_data:
+                print(f"💾 [DEBUG] 从缓存加载OpenAI基本面数据: {ticker}")
+                return cached_data
+        
+        config = get_config()
+        
+        # 检查是否配置了OpenAI相关设置
+        if not config.get("backend_url") or not config.get("quick_think_llm"):
+            print(f"📊 [DEBUG] OpenAI配置不完整，直接使用Finnhub API")
+            return get_fundamentals_finnhub(ticker, curr_date)
+        
+        print(f"📊 [DEBUG] 尝试使用OpenAI获取 {ticker} 的基本面数据...")
+        
+        client = OpenAI(base_url=config["backend_url"])
 
-    response = client.responses.create(
-        model=config["quick_think_llm"],
-        input=[
-            {
-                "role": "system",
-                "content": [
-                    {
-                        "type": "input_text",
-                        "text": f"Can you search Fundamental for discussions on {ticker} during of the month before {curr_date} to the month of {curr_date}. Make sure you only get the data posted during that period. List as a table, with PE/PS/Cash flow/ etc",
-                    }
-                ],
-            }
-        ],
-        text={"format": {"type": "text"}},
-        reasoning={},
-        tools=[
-            {
-                "type": "web_search_preview",
-                "user_location": {"type": "approximate"},
-                "search_context_size": "low",
-            }
-        ],
-        temperature=1,
-        max_output_tokens=4096,
-        top_p=1,
-        store=True,
-    )
+        response = client.responses.create(
+            model=config["quick_think_llm"],
+            input=[
+                {
+                    "role": "system",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": f"Can you search Fundamental for discussions on {ticker} during of the month before {curr_date} to the month of {curr_date}. Make sure you only get the data posted during that period. List as a table, with PE/PS/Cash flow/ etc",
+                        }
+                    ],
+                }
+            ],
+            text={"format": {"type": "text"}},
+            reasoning={},
+            tools=[
+                {
+                    "type": "web_search_preview",
+                    "user_location": {"type": "approximate"},
+                    "search_context_size": "low",
+                }
+            ],
+            temperature=1,
+            max_output_tokens=4096,
+            top_p=1,
+            store=True,
+        )
 
-    return response.output[1].content[0].text
+        result = response.output[1].content[0].text
+        
+        # 保存到缓存
+        if result and len(result) > 100:  # 只有当结果有实际内容时才缓存
+            cache.save_fundamentals_data(ticker, result, data_source="openai")
+        
+        print(f"📊 [DEBUG] OpenAI基本面数据获取成功，长度: {len(result)}")
+        return result
+        
+    except Exception as e:
+        print(f"❌ [DEBUG] OpenAI基本面数据获取失败: {str(e)}")
+        print(f"📊 [DEBUG] 回退到Finnhub API...")
+        return get_fundamentals_finnhub(ticker, curr_date)
+
+    # config = get_config()
+    # client = OpenAI(base_url=config["backend_url"])
+
+    # response = client.responses.create(
+    #     model=config["quick_think_llm"],
+    #     input=[
+    #         {
+    #             "role": "system",
+    #             "content": [
+    #                 {
+    #                     "type": "input_text",
+    #                     "text": f"Can you search Fundamental for discussions on {ticker} during of the month before {curr_date} to the month of {curr_date}. Make sure you only get the data posted during that period. List as a table, with PE/PS/Cash flow/ etc",
+    #                 }
+    #             ],
+    #         }
+    #     ],
+    #     text={"format": {"type": "text"}},
+    #     reasoning={},
+    #     tools=[
+    #         {
+    #             "type": "web_search_preview",
+    #             "user_location": {"type": "approximate"},
+    #             "search_context_size": "low",
+    #         }
+    #     ],
+    #     temperature=1,
+    #     max_output_tokens=4096,
+    #     top_p=1,
+    #     store=True,
+    # )
+
+    # return response.output[1].content[0].text

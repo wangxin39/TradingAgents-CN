@@ -5,6 +5,97 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 并且本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+
+## [cn-0.1.4] - 2025-07-05
+
+### 🏗️ 架构优化与配置管理重构 | Architecture Optimization & Configuration Management Refactoring
+
+#### ✨ 新增功能 | Added Features
+
+**🔧 统一数据库管理器**
+- 新的智能数据库管理器 (`tradingagents.config.database_manager`)
+- 自动检测MongoDB和Redis可用性
+- 智能降级机制：数据库不可用时自动使用文件缓存
+- 完善的错误处理和日志记录
+
+**⚙️ 配置管理统一化**
+- 统一使用.env文件管理所有数据库配置
+- 移除配置文件间的冲突和重复
+- 清晰的配置优先级和来源
+
+#### 🔧 改进 | Improvements
+
+**📋 配置管理优化**
+- 移除`default_config.py`中的数据库配置硬编码
+- 所有数据库配置统一从环境变量读取
+- 简化配置流程，只需编辑.env文件
+
+**🗄️ 数据库管理器统一**
+- 移除重复的`tradingagents.dataflows.database_manager`
+- 统一使用`tradingagents.config.database_manager`
+- 更新所有相关文件的导入引用
+
+**🔒 启用开关修复**
+- 修复`MONGODB_ENABLED`和`REDIS_ENABLED`开关不生效的问题
+- 系统严格遵守用户的数据库启用设置
+- 禁用时不会尝试连接数据库，避免无用的错误消息
+
+#### 🐛 错误修复 | Bug Fixes
+
+**💾 MongoDB布尔值判断错误**
+- 修复`Database objects do not implement truth value testing`错误
+- 将所有`if mongodb_db:`改为`if mongodb_db is not None:`
+- 使用专门的`is_mongodb_available()`和`is_redis_available()`方法
+
+**🔄 配置冲突解决**
+- 解决多个配置源导致的冲突问题
+- 确保配置的一致性和可预测性
+- 移除冗余的配置文件和设置
+
+#### 📚 文档更新 | Documentation Updates
+
+**📖 新增架构优化文档**
+- 详细的配置管理和数据库架构优化指南
+- 使用示例和最佳实践
+- 问题排查和验证方法
+
+**🔄 更新相关文档**
+- 更新数据库配置文档
+- 修正API使用示例
+- 完善操作指南
+
+#### 🎯 用户体验改进 | User Experience Improvements
+
+**🎛️ 更简单的配置**
+- 只需要编辑.env文件即可完成所有数据库配置
+- 启用开关直观明确，行为可预测
+- 减少了配置错误的可能性
+
+**🔍 更清晰的系统行为**
+- 数据库禁用时不会出现连接错误消息
+- 自动降级机制保证系统在任何环境下都能正常工作
+- 更好的错误提示和日志信息
+
+#### 🏗️ 架构改进 | Architecture Improvements
+
+**📐 清晰的架构层次**
+```
+.env文件 (唯一配置源)
+    ↓
+tradingagents.config.database_manager (统一管理器)
+    ↓
+自动检测 + 智能降级
+    ↓
+文件缓存 / MongoDB / Redis
+```
+
+**🔧 代码质量提升**
+- 移除重复和冗余的组件
+- 统一的API接口和使用方式
+- 更好的可维护性和扩展性
+
+---
+
 ## [cn-0.1.3] - 2025-06-28
 
 ### 🇨🇳 A股市场完整支持 | Complete A-Share Market Support

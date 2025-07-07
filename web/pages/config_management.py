@@ -16,6 +16,11 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+
+# 导入UI工具函数
+sys.path.append(str(Path(__file__).parent.parent))
+from utils.ui_utils import apply_hide_deploy_button_css
+
 from tradingagents.config.config_manager import (
     config_manager, ModelConfig, PricingConfig
 )
@@ -23,6 +28,9 @@ from tradingagents.config.config_manager import (
 
 def render_config_management():
     """渲染配置管理页面"""
+    # 应用隐藏Deploy按钮的CSS样式
+    apply_hide_deploy_button_css()
+
     st.title("⚙️ 配置管理")
 
     # 显示.env配置状态

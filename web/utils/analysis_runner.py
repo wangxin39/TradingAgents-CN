@@ -285,15 +285,34 @@ def format_analysis_results(results):
             'action': decision.strip().upper(),
             'confidence': 0.7,  # 默认置信度
             'risk_score': 0.3,  # 默认风险分数
-            'target_price': 'N/A',
+            'target_price': None,  # 字符串格式没有目标价格
             'reasoning': f'基于AI分析，建议{decision.strip().upper()}'
         }
     elif isinstance(decision, dict):
+        # 处理目标价格 - 确保正确提取数值
+        target_price = decision.get('target_price')
+        if target_price is not None and target_price != 'N/A':
+            try:
+                # 尝试转换为浮点数
+                if isinstance(target_price, str):
+                    # 移除货币符号和空格
+                    clean_price = target_price.replace('$', '').replace('¥', '').replace('￥', '').strip()
+                    target_price = float(clean_price) if clean_price and clean_price != 'None' else None
+                elif isinstance(target_price, (int, float)):
+                    target_price = float(target_price)
+                else:
+                    target_price = None
+            except (ValueError, TypeError):
+                target_price = None
+        else:
+            target_price = None
+
         formatted_decision = {
             'action': decision.get('action', 'HOLD'),
             'confidence': decision.get('confidence', 0.5),
             'risk_score': decision.get('risk_score', 0.3),
-            'target_price': decision.get('target_price', 'N/A'),
+            # 'target_price': decision.get('target_price', 'N/A'),
+            'target_price': target_price,
             'reasoning': decision.get('reasoning', '暂无分析推理')
         }
     else:
@@ -302,7 +321,8 @@ def format_analysis_results(results):
             'action': 'HOLD',
             'confidence': 0.5,
             'risk_score': 0.3,
-            'target_price': 'N/A',
+            # 'target_price': 'N/A',
+            'target_price': None,
             'reasoning': f'分析结果: {str(decision)}'
         }
     
@@ -328,6 +348,12 @@ def format_analysis_results(results):
         'decision': formatted_decision,
         'state': formatted_state,
         'success': True,
+        # 将配置信息放在顶层，供前端直接访问
+        'analysis_date': results['analysis_date'],
+        'analysts': results['analysts'],
+        'research_depth': results['research_depth'],
+        'llm_provider': results.get('llm_provider', 'dashscope'),
+        'llm_model': results['llm_model'],
         'metadata': {
             'analysis_date': results['analysis_date'],
             'analysts': results['analysts'],

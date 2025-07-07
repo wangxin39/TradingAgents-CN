@@ -38,13 +38,35 @@ def create_market_analyst_react(llm, toolkit):
                     def _run(self, query: str = "") -> str:
                         try:
                             print(f"📈 [DEBUG] ChinaStockDataTool调用，股票代码: {ticker}")
-                            return toolkit.get_china_stock_data.invoke({
-                                'stock_code': ticker,
-                                'start_date': '2025-05-28',
-                                'end_date': current_date
-                            })
+                        #     return toolkit.get_china_stock_data.invoke({
+                        #         'stock_code': ticker,
+                        #         'start_date': '2025-05-28',
+                        #         'end_date': current_date
+                        #     })
+                        # except Exception as e:
+                        #     return f"获取股票数据失败: {str(e)}"
+                            # 使用优化的缓存数据获取
+                            from tradingagents.dataflows.optimized_china_data import get_china_stock_data_cached
+                            return get_china_stock_data_cached(
+                                symbol=ticker,
+                                start_date='2025-05-28',
+                                end_date=current_date,
+                                force_refresh=False
+                            )
                         except Exception as e:
-                            return f"获取股票数据失败: {str(e)}"
+                            print(f"❌ 优化A股数据获取失败: {e}")
+                            # 备用方案：使用原始API
+                            try:
+                                return toolkit.get_china_stock_data.invoke({
+                                    'stock_code': ticker,
+                                    'start_date': '2025-05-28',
+                                    'end_date': current_date
+                                })
+                            except Exception as e2:
+                                return f"获取股票数据失败: {str(e2)}"
+
+
+
 
                 tools = [ChinaStockDataTool()]
                 query = f"""请对中国A股股票{ticker}进行详细的技术分析。
@@ -80,13 +102,33 @@ def create_market_analyst_react(llm, toolkit):
                     def _run(self, query: str = "") -> str:
                         try:
                             print(f"📈 [DEBUG] USStockDataTool调用，股票代码: {ticker}")
-                            return toolkit.get_YFin_data_online.invoke({
-                                'symbol': ticker,
-                                'start_date': '2025-05-28',
-                                'end_date': current_date
-                            })
+                        #     return toolkit.get_YFin_data_online.invoke({
+                        #         'symbol': ticker,
+                        #         'start_date': '2025-05-28',
+                        #         'end_date': current_date
+                        #     })
+                        # except Exception as e:
+                        #     return f"获取股票数据失败: {str(e)}"
+                            # 使用优化的缓存数据获取
+                            from tradingagents.dataflows.optimized_us_data import get_us_stock_data_cached
+                            return get_us_stock_data_cached(
+                                symbol=ticker,
+                                start_date='2025-05-28',
+                                end_date=current_date,
+                                force_refresh=False
+                            )
                         except Exception as e:
-                            return f"获取股票数据失败: {str(e)}"
+                            print(f"❌ 优化美股数据获取失败: {e}")
+                            # 备用方案：使用原始API
+                            try:
+                                return toolkit.get_YFin_data_online.invoke({
+                                    'symbol': ticker,
+                                    'start_date': '2025-05-28',
+                                    'end_date': current_date
+                                })
+                            except Exception as e2:
+                                return f"获取股票数据失败: {str(e2)}"
+
 
                 class FinnhubNewsTool(BaseTool):
                     name: str = "get_finnhub_news"
