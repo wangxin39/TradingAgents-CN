@@ -1,0 +1,7 @@
+
+=== Starting propagate ===
+Current working directory: D:\ai-ms\TradingAgents-CN
+Debug file location: D:\ai-ms\TradingAgents-CN\tradingagents\propagate_debug.txt
+Company name: 000001
+Trade date: 2025-07-07
+Creating initial state...
