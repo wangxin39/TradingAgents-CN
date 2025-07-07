@@ -1473,6 +1473,98 @@ def version():
     console.print("  • 🎯 本项目旨在更好地在中国推广TradingAgents")
     console.print("  • 🔗 源项目: https://github.com/TauricResearch/TradingAgents")
 
+@app.command(
+    name="data-config",
+    help="数据目录配置 | Data directory configuration"
+)
+def data_config(
+    show: bool = typer.Option(False, "--show", "-s", help="显示当前配置 | Show current configuration"),
+    set_dir: Optional[str] = typer.Option(None, "--set", "-d", help="设置数据目录 | Set data directory"),
+    reset: bool = typer.Option(False, "--reset", "-r", help="重置为默认配置 | Reset to default configuration")
+):
+    """
+    配置数据目录路径
+    Configure data directory paths
+    """
+    from tradingagents.config.config_manager import config_manager
+    from tradingagents.dataflows.config import get_data_dir, set_data_dir
+    
+    console.print("\n[bold blue]📁 数据目录配置 | Data Directory Configuration[/bold blue]")
+    
+    if reset:
+        # 重置为默认配置
+        default_data_dir = os.path.join(os.path.expanduser("~"), "Documents", "TradingAgents", "data")
+        set_data_dir(default_data_dir)
+        console.print(f"[green]✅ 已重置数据目录为默认路径: {default_data_dir}[/green]")
+        return
+    
+    if set_dir:
+        # 设置新的数据目录
+        try:
+            set_data_dir(set_dir)
+            console.print(f"[green]✅ 数据目录已设置为: {set_dir}[/green]")
+            
+            # 显示创建的目录结构
+            if os.path.exists(set_dir):
+                console.print("\n[blue]📂 目录结构:[/blue]")
+                for root, dirs, files in os.walk(set_dir):
+                    level = root.replace(set_dir, '').count(os.sep)
+                    if level > 2:  # 限制显示深度
+                        continue
+                    indent = '  ' * level
+                    console.print(f"{indent}📁 {os.path.basename(root)}/")
+        except Exception as e:
+            console.print(f"[red]❌ 设置数据目录失败: {e}[/red]")
+        return
+    
+    # 显示当前配置（默认行为或使用--show）
+    settings = config_manager.load_settings()
+    current_data_dir = get_data_dir()
+    
+    # 配置信息表格
+    config_table = Table(show_header=True, header_style="bold magenta")
+    config_table.add_column("配置项 | Configuration", style="cyan")
+    config_table.add_column("路径 | Path", style="green")
+    config_table.add_column("状态 | Status", style="yellow")
+    
+    directories = {
+        "数据目录 | Data Directory": settings.get("data_dir", "未配置"),
+        "缓存目录 | Cache Directory": settings.get("cache_dir", "未配置"),
+        "结果目录 | Results Directory": settings.get("results_dir", "未配置")
+    }
+    
+    for name, path in directories.items():
+        if path and path != "未配置":
+            status = "✅ 存在" if os.path.exists(path) else "❌ 不存在"
+        else:
+            status = "⚠️ 未配置"
+        config_table.add_row(name, str(path), status)
+    
+    console.print(config_table)
+    
+    # 环境变量信息
+    console.print("\n[blue]🌍 环境变量 | Environment Variables:[/blue]")
+    env_table = Table(show_header=True, header_style="bold magenta")
+    env_table.add_column("环境变量 | Variable", style="cyan")
+    env_table.add_column("值 | Value", style="green")
+    
+    env_vars = {
+        "TRADINGAGENTS_DATA_DIR": os.getenv("TRADINGAGENTS_DATA_DIR", "未设置"),
+        "TRADINGAGENTS_CACHE_DIR": os.getenv("TRADINGAGENTS_CACHE_DIR", "未设置"),
+        "TRADINGAGENTS_RESULTS_DIR": os.getenv("TRADINGAGENTS_RESULTS_DIR", "未设置")
+    }
+    
+    for var, value in env_vars.items():
+        env_table.add_row(var, value)
+    
+    console.print(env_table)
+    
+    # 使用说明
+    console.print("\n[yellow]💡 使用说明 | Usage:[/yellow]")
+    console.print("• 设置数据目录: tradingagents data-config --set /path/to/data")
+    console.print("• 重置为默认: tradingagents data-config --reset")
+    console.print("• 查看当前配置: tradingagents data-config --show")
+    console.print("• 环境变量优先级最高 | Environment variables have highest priority")
 
 @app.command(
     name="examples",
@@ -1515,7 +1607,11 @@ def examples():
         "tests/integration/test_dashscope_integration.py",
         "集成测试 | Integration test"
     )
-
+    examples_table.add_row(
+        "📁 配置演示",
+        "examples/data_dir_config_demo.py",
+        "数据目录配置演示 | Data directory configuration demo"
+    )
     console.print(examples_table)
 
     console.print("\n[yellow]运行示例 | Run Examples:[/yellow]")
@@ -1627,13 +1723,37 @@ def help_chinese():
 def main():
     """主函数 - 默认进入分析模式"""
     import sys
+    from difflib import get_close_matches
 
     # 如果没有参数，直接进入分析模式
     if len(sys.argv) == 1:
         run_analysis()
     else:
         # 有参数时使用typer处理命令
-        app()
+        # app()
+
+        try:
+            app()
+        except SystemExit as e:
+            # 只在退出码为2（typer的未知命令错误）时提供智能建议
+            if e.code == 2 and len(sys.argv) > 1:
+                unknown_command = sys.argv[1]
+                available_commands = ['analyze', 'config', 'version', 'data-config', 'examples', 'test', 'help']
+                
+                # 使用difflib找到最相似的命令
+                suggestions = get_close_matches(unknown_command, available_commands, n=3, cutoff=0.6)
+                
+                if suggestions:
+                    console.print(f"\n[red]❌ 未知命令: '{unknown_command}'[/red]")
+                    console.print(f"[yellow]💡 您是否想要使用以下命令之一？[/yellow]")
+                    for suggestion in suggestions:
+                        console.print(f"   • [cyan]python -m cli.main {suggestion}[/cyan]")
+                    console.print(f"\n[dim]使用 [cyan]python -m cli.main help[/cyan] 查看所有可用命令[/dim]")
+                else:
+                    console.print(f"\n[red]❌ 未知命令: '{unknown_command}'[/red]")
+                    console.print(f"[yellow]使用 [cyan]python -m cli.main help[/cyan] 查看所有可用命令[/yellow]")
+            raise e
+
 
 if __name__ == "__main__":
     main()
