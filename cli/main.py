@@ -936,11 +936,12 @@ def run_analysis():
 
     # Initialize the graph
     try:
+        print(config)
         graph = TradingAgentsGraph(
             [analyst.value for analyst in selections["analysts"]], config=config, debug=True
         )
     except Exception as e:
-        console.print(f"\n[red]❌ 初始化失败 | Initialization failed: {str(e)}[/red]")
+        console.print(f"\n[red]❌ 初始化失败 | Initialization failed: {e}[/red]")
         console.print("\n[yellow]💡 请检查API密钥配置 | Please check API key configuration[/yellow]")
         return
 
